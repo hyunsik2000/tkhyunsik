@@ -1,0 +1,109 @@
+/* It computes matrix multiplication. Reads two matrix, multiply them, stores the result matrix */
+/* Usage: ./hw2 data1.bin data2.bin res.bin N */
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include "wrapper.h"
+#include "timeft.h"
+#include <math.h>
+#include <sys/stat.h>
+
+int main(int argc, char *argv[])
+{
+  int ifd1, ifd2, ofd, n, p;
+  double **data1, **data2, **data3;
+  struct stat st1;
+  struct stat st2;
+  pid_t pid;
+  
+  if (argc != 5){
+  	perror("Usage: ./hw2 infile1 infile2 outfile <p>");
+  	return 1;
+  }
+  Stat(argv[1], &st1);
+  n = sqrt(st1.st_size / sizeof(double));
+  if(st1.st_size != n*n*sizeof(double)){
+  	perror("Error: The 1st input file size is not n*n");
+  	return 1;
+  }
+  Stat(argv[2], &st2);
+  if(st2.st_size != st1.st_size){
+  	perror("Error: The 2nd input file size is not the same as the 1st one");
+  	return 1;
+  }
+  if (atoi(argv[4]) <= 0){
+  	perror("Error: The 4th parameter should be an integer greater than zero");
+  	return 1;
+  }
+  if (atoi(argv[4]) > n){
+  	p = n;
+  }
+  else {
+  	p = atoi(argv[4]);
+  }
+  ifd1 = Open(argv[1], O_RDONLY);
+  data1 = (double **) malloc(n * sizeof(double *));
+  for (int i = 0; i < n; i++) {
+  	data1[i] = (double *) malloc(n * sizeof(double));
+    		for (int j = 0; j < n; j++) {
+      			read(ifd1, &data1[i][j], sizeof(double));
+    }
+  }
+  close(ifd1);
+  ifd2 = Open(argv[2], O_RDONLY);
+  data2 = (double **) malloc(n * sizeof(double *));
+  for (int i = 0; i < n; i++) {
+  	data2[i] = (double *) malloc(n * sizeof(double));
+    		for (int j = 0; j < n; j++) {
+      			read(ifd2, &data2[i][j], sizeof(double));
+    }
+  }
+  close(ifd2);
+  data3 = (double **) malloc(n * sizeof(double *));
+  for (int i = 0; i < n; i++) {
+  	data3[i] = (double *) malloc(n * sizeof(double));
+  }
+  init_timelog(1);
+  int start;
+  int end;
+  int r = n%p;
+  for (int i = 0; i < p; i++) {
+  	start_timelog(p);
+  	pid = fork();
+  	    if(pid == 0){
+  	        if(n%p == 0){
+  		    start = i*(n/p);
+                    end = (i+1)*(n/p)-1;
+                }
+           	 else {
+           	     if(i < r){
+           	     start = i*(n/p);
+           	     end = (i+1)*(n/p);
+           	     }
+           	     else {
+                     start = r+ i*(n/p);
+           	     end = r+ (i+1)*(n/p)-1;
+           	     }
+           	 }
+  	     for (int i = start; i < end ;i++){
+    	         for (int j = 0; j < n; j++) {
+                     double result = 0.0;
+        	        for (int m = 0; m < n; m++) {
+            	            result += data1[i][m] * data2[m][j];
+        		}
+        		data3[i][j] = result;
+    			}	
+  		}
+  	    finish_timelog(p);
+  	    }
+  }
+  close_timelog();
+  ofd = Creat(argv[3], 0644);
+  for (int i = 0; i < n; i++) {
+  	for (int j = 0; j < n; j++) {
+     		write(ofd, &data3[i][j], sizeof(double));
+    }
+  }
+  close(ofd);
+  return(0);
+}
