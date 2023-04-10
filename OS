@@ -7,6 +7,7 @@
 #include "timeft.h"
 #include <math.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 
 int main(int argc, char *argv[])
 {
@@ -59,45 +60,51 @@ int main(int argc, char *argv[])
     }
   }
   close(ifd2);
-  data3 = (double **) malloc(n * sizeof(double *));
+  data3 = (double **) Mmap(NULL,n * sizeof(double *), PROT_READ, MAP_SHARED,-1,0);
   for (int i = 0; i < n; i++) {
-  	data3[i] = (double *) malloc(n * sizeof(double));
+  	data3[i] = (double *) Mmap(NULL,n * sizeof(double), PROT_READ, MAP_SHARED, -1,0);
   }
-  init_timelog(1);
+
   int start;
   int end;
   int r = n%p;
+  init_timelog(1);
+  start_timelog(0);
   for (int i = 0; i < p; i++) {
-  	start_timelog(p);
   	pid = fork();
   	    if(pid == 0){
-  	        if(n%p == 0){
-  		    start = i*(n/p);
-                    end = (i+1)*(n/p)-1;
-                }
-           	 else {
-           	     if(i < r){
-           	     start = i*(n/p);
-           	     end = (i+1)*(n/p);
+  	    	if(r == 0){
+  	    		start = i*(n/p);
+           		end = (i+1)*(n/p)-1;
+  	    	}
+           	else if(r != 0){
+                  if(i < r){
+           	     start = i*(n/p+1);
+           	     end = (i+1)*(n/p+1)-1;
            	     }
            	     else {
-                     start = r+ i*(n/p);
+                    start = r+ i*(n/p);
            	     end = r+ (i+1)*(n/p)-1;
            	     }
            	 }
-  	     for (int i = start; i < end ;i++){
+  	     for (int k = start; k < end ;k++){
     	         for (int j = 0; j < n; j++) {
-                     double result = 0.0;
+                     data3[k][j] = 0;
         	        for (int m = 0; m < n; m++) {
-            	            result += data1[i][m] * data2[m][j];
+            	            data3[k][j] += data1[k][m] * data2[m][j];
         		}
-        		data3[i][j] = result;
     			}	
   		}
-  	    finish_timelog(p);
+  	    exit(0);
   	    }
+  int status;
+  for (int i = 0; i < p;i++){
+  	wait(&status);
   }
+  
+  finish_timelog(0);
   close_timelog();
+  
   ofd = Creat(argv[3], 0644);
   for (int i = 0; i < n; i++) {
   	for (int j = 0; j < n; j++) {
@@ -106,4 +113,5 @@ int main(int argc, char *argv[])
   }
   close(ofd);
   return(0);
+}
 }
