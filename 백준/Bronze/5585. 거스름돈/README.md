@@ -22,3 +22,8 @@
 
  <p>제출할 출력 파일은 1행으로만 되어 있다. 잔돈에 포함된 매수를 출력하시오.</p>
 
+## 문제 해결시 어려웠던 점
+
+for coin in coins:
+    count = count + change // coin
+    change = change % coin
