@@ -26,3 +26,10 @@
 
  <p>첫째 줄에 K원을 만드는데 필요한 동전 개수의 최솟값을 출력한다.</p>
 
+## 문제 해결시 어려웠던 점
+
+n,k = map(int, input().split())
+coin = []                
+count = 0
+for i in range(n):
+    coin.append(int(input()))
