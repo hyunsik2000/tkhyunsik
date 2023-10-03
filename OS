@@ -1,9 +1,89 @@
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include "wrapper.h"
 
-t = int(input())
 
-for _ in range(t):
-    c = int(input())
-    for i in [25,10,5,1]:
-        print(c // i, end=' ')
-        c = c % i
+int main(void)
+{
+  int fd, res;
+  char mybuf[256];
+  
+  fd = Open("data1.txt", O_RDONLY);
+  res = Read(fd, mybuf, 16);
+  printf("The read size is %d\n", res);
+  res = close(fd);
+  
+  fd = Open("data1.txt", O_WRONLY, 0644);
+  write(fd, msg, strlen(msg));
+  lseek(fd, 2, SEEK_CUR);
+  write(fd, msg, strlen(msg));
+  close(fd);
+
+  fd = Open("data1.txt", O_RDONLY, 0644);
+  res = Read(fd, mybuf, 16);
+  printf(“%s\n”, mybuf);
+  close(fd);  
+  return(0);
+}
+
+#include <unistd.h>
+#include <string.h>
+#include <stdio.h>
+#include <fcntl.h>
+
+int Open(const char *pathname, int flags, mode_t mode){
+	int fd;
+	
+	fd = open(pathname, flags, mode);
+	if(fd < 0){
+		fprintf(stderr, "open error.\n");
+		exit(1);
+	}
+	return(fd);
+}
+
+ssize_t Read(int fildes, void *buf, size_t nbyte)
+{
+	int try = 5;
+	
+	while (try > 0){
+	int res = read(fildes, buf, nbyte);
+	if(res < 0){
+		if (errno == EINTR)
+		 fprintf(stderr, "read is stopped by signal\n");
+		 try--;
+		else{
+		 fprintf(stderr, "%s.\n", strerror(errno));
+		 exit(1);
+		}
+	}
+	return(res);
+	}
+
+}
+
+extern int Open(const char *pathname, int flags, mode_t mode);
+extern ssize_t Read(int fildes, void *buf, size_t nbyte);
+
+CC = gcc
+CFLAGS = -Wall -g
+LIBS =
+INCLUDE =
+OBJS = hw2.o wrapper.o
+TARGET = hw2
+
+$(TARGET): $(OBJS)
+        $(CC) -o $(TARGET) $(OBJS) $(LIBS)
+
+.c.o:
+        $(CC) -c $(CFLAGS) $*.c $(INCLUDE)
+
+clean:
+        rm $(OBJS) $(TARGET)
+
+hw2.o: wrapper.h
+wrapper.o: wrapper.h
 
