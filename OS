@@ -1,89 +1,48 @@
+#include <sys/types.h>
+#include <dirent.h>
 #include <sys/stat.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <unistd.h>
-#include "wrapper.h"
+#include <stdio.h>
+#include <string.h>
 
+
+long num =0;
+
+void travel(char *path){
+	DIR *dirp;
+	struct dirent *dentry;
+	struct stat finfo;
+	
+	
+	printf("visiting %s\n", path);
+	chdir(path);
+	
+	dirp = opendir(".");
+	if(dirp == NULL)
+		return;
+		
+	while((dentry = readdir(dirp)) != NULL){
+		if (stat(dentry->d_name, &finfo) == -1) continue;
+		if (!S_ISDIR(finfo.st_mode)) 
+			if(S_ISREG(finfo.st_mode)){
+				num += finfo.st_size;
+				continue;
+			}
+		if (strcmp(dentry->d_name, ".") == 0) continue;
+		if (strcmp(dentry->d_name, "..") == 0) continue;
+		
+		travel(dentry->d_name);	
+	}
+	closedir(dirp);
+	chdir("..");
+	printf("leaving %s\n",path);
+	return;
+}
 
 int main(void)
 {
-  int fd, res;
-  char mybuf[256];
-  
-  fd = Open("data1.txt", O_RDONLY);
-  res = Read(fd, mybuf, 16);
-  printf("The read size is %d\n", res);
-  res = close(fd);
-  
-  fd = Open("data1.txt", O_WRONLY, 0644);
-  write(fd, msg, strlen(msg));
-  lseek(fd, 2, SEEK_CUR);
-  write(fd, msg, strlen(msg));
-  close(fd);
-
-  fd = Open("data1.txt", O_RDONLY, 0644);
-  res = Read(fd, mybuf, 16);
-  printf(“%s\n”, mybuf);
-  close(fd);  
-  return(0);
-}
-
-#include <unistd.h>
-#include <string.h>
-#include <stdio.h>
-#include <fcntl.h>
-
-int Open(const char *pathname, int flags, mode_t mode){
-	int fd;
+	travel(".");
+	printf("The total size of regular files : %ld\n",num);
+	return(0);
 	
-	fd = open(pathname, flags, mode);
-	if(fd < 0){
-		fprintf(stderr, "open error.\n");
-		exit(1);
-	}
-	return(fd);
 }
-
-ssize_t Read(int fildes, void *buf, size_t nbyte)
-{
-	int try = 5;
-	
-	while (try > 0){
-	int res = read(fildes, buf, nbyte);
-	if(res < 0){
-		if (errno == EINTR)
-		 fprintf(stderr, "read is stopped by signal\n");
-		 try--;
-		else{
-		 fprintf(stderr, "%s.\n", strerror(errno));
-		 exit(1);
-		}
-	}
-	return(res);
-	}
-
-}
-
-extern int Open(const char *pathname, int flags, mode_t mode);
-extern ssize_t Read(int fildes, void *buf, size_t nbyte);
-
-CC = gcc
-CFLAGS = -Wall -g
-LIBS =
-INCLUDE =
-OBJS = hw2.o wrapper.o
-TARGET = hw2
-
-$(TARGET): $(OBJS)
-        $(CC) -o $(TARGET) $(OBJS) $(LIBS)
-
-.c.o:
-        $(CC) -c $(CFLAGS) $*.c $(INCLUDE)
-
-clean:
-        rm $(OBJS) $(TARGET)
-
-hw2.o: wrapper.h
-wrapper.o: wrapper.h
-
