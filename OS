@@ -1,83 +1,123 @@
-#include <sys/types.h>
-#include <dirent.h>
-#include <sys/stat.h>
-#include <unistd.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
-typedef struct {
-    char name[256];
-    off_t size;
-} mydata_t;
+#define MAX_LEN 1024
+#define DELIM " \t\r\n\a"
 
-int compare_file_info(const void *a, const void *b) {
-    const mydata_t *fileInfoA = (const mydata_t *)a;
-    const mydata_t *fileInfoB = (const mydata_t *)b;
-    return (fileInfoB->size - fileInfoA->size);
+char *get_prompt() {
+        return "# ";
+    
 }
 
-int myGetFNList(mydata_t *list, int arrsize) {
-    DIR *dirp;
-    struct dirent *dentry;
-    struct stat finfo;
-    int numFiles = 0;
+char **parse_command(char *line) {
+    int bufsize = 64, position = 0;
+    char **tokens = malloc(bufsize * sizeof(char*));
+    char *token;
 
-    dirp = opendir(".");
-    if (dirp == NULL) {
-        perror("opendir");
-        return -1; 
+    if (!tokens) {
+        perror("hw4");
+        exit(EXIT_FAILURE);
     }
 
-    while ((dentry = readdir(dirp)) != NULL) {
-        if (stat(dentry->d_name, &finfo) == -1) {
-            perror("stat");
-            continue;
-        }
-        if (!S_ISDIR(finfo.st_mode) && S_ISREG(finfo.st_mode)) {
-            if (numFiles < arrsize) {
-                strncpy(list[numFiles].name, dentry->d_name, sizeof(list[numFiles].name) - 1);
-                list[numFiles].name[sizeof(list[numFiles].name) - 1] = '\0'; 
-                list[numFiles].size = finfo.st_size;
-                numFiles++;
-            } else {
-                break;
+    token = strtok(line, DELIM);
+    while (token != NULL) {
+        tokens[position] = token;
+        position++;
+
+        if (position >= bufsize) {
+            bufsize += 64;
+            tokens = realloc(tokens, bufsize * sizeof(char*));
+            if (!tokens) {
+                perror("hw4");
+                exit(EXIT_FAILURE);
             }
         }
+
+        token = strtok(NULL, DELIM);
     }
+    tokens[position] = NULL;
+    return tokens;
+}
 
-    closedir(dirp);
+void execute_command(char **args) {
+    pid_t pid, wpid;
+    int status;
 
-    if (numFiles > 0) {
-        qsort(list, numFiles, sizeof(mydata_t), compare_file_info);
-
-        for (int i = 0; i < numFiles; i++) {
-            printf("%s %ld\n", list[i].name, list[i].size);
-
-            char new_name[256];
-            snprintf(new_name, sizeof(new_name), "%02d-%s", i + 1, list[i].name);
-            if (rename(list[i].name, new_name) != 0) {
-                perror("rename");
-            }
+    pid = fork();
+    if (pid == 0) {
+        // 자식 프로세스
+        if (execvp(args[0], args) == -1) {
+            fprintf(stderr, "execvp(%s) is failed\n", args[0]);
+            perror("hw4");
+            exit(EXIT_FAILURE);
         }
+    } else if (pid < 0) {
+        // fork 실패
+        perror("hw4");
     } else {
-        printf("No files found.\n");
+        // 부모 프로세스
+        do {
+            wpid = waitpid(pid, &status, WUNTRACED);
+        } while (!WIFEXITED(status) && !WIFSIGNALED(status));
+        if(wpid == pid) {
+        	printf("(%d)\n", wpid);
+        }
     }
-
-    return numFiles;
 }
 
-int main(void) {
+int main(int argc, char **argv) {
+    char *line;
+    char **args;
 
-    mydata_t *fileInfos = (mydata_t *)malloc(100 * sizeof(mydata_t));  
+    do {
+        printf("%s", get_prompt());
+        line = malloc(MAX_LEN);
+        fgets(line, MAX_LEN, stdin);
+        args = parse_command(line);
 
-    if (fileInfos == NULL) {
-        perror("malloc");
-        return 1;
-    }
+        if (args[0] != NULL) {
+            if (strcmp(args[0], "cd") == 0) {
+                if (args[1] == NULL) {
+                    chdir(getenv("HOME"));
+                } else {
+                    if (chdir(args[1]) != 0) {
+                        perror("hw4");
+                    }
+                }
+                char cwd[MAX_LEN];
+                if (getcwd(cwd, sizeof(cwd)) != NULL) {
+                    printf("%s\n", cwd);
+                } else {
+                    perror("hw4");
+                }
+            } else if (strcmp(args[0], "exit") == 0 || strcmp(args[0], "quit") == 0) {
+                break;
+            } else {
+                execute_command(args);
+            }
+        }
 
-    int numFiles = myGetFNList(fileInfos, 100);
+        free(line);
+        free(args);
+    } while (1);
 
-    free(fileInfos);
-    return 0;
+    return EXIT_SUCCESS;
 }
+
+
+
+CC=gcc
+CFLAGS=-I.
+
+hw4: hw4.o
+	$(CC) -o hw4 hw4.o $(CFLAGS)
+
+hw4.o: hw4.c
+	$(CC) -c hw4.c $(CFLAGS)
+
+clean:
+	rm -f *.o hw4
+
