@@ -1,10 +1,11 @@
 function solution(absolutes, signs) {
     let answer = 0;
-    for (let i = 0; i < signs.length; i++){
-        if(signs[i] === true){
-            answer += absolutes[i];
+    absolutes.forEach((v, i) => {
+        if (signs[i]) {
+            answer += v;
+        } else {
+            answer -= v;
         }
-        else {answer -= absolutes[i];}
-    }
+    })
     return answer;
 }
