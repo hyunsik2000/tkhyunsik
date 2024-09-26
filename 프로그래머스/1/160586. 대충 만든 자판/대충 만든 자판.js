@@ -15,8 +15,7 @@ function solution(keymap, targets) {
                 answer[i] = -1;
                 break;
             }
-            n.sort((a,b) => (a - b));
-            answer[i] += n[0];
+            answer[i] += Math.min(...n);
         }
     }
     
