@@ -1,15 +1,10 @@
 function solution(numbers) {
     var answer = [];
-    var count = 0;
-    while(count !== numbers.length -1){
-    for(let i = count + 1; i < numbers.length; i++){
-        let num = numbers[count] + numbers[i];
-        if(answer.indexOf(num) !== -1){
-            continue;
+    var temp = [];
+    for(let count = 0; count < numbers.length - 1; count++){
+        for(let i = count + 1; i < numbers.length; i++){
+            answer.push(numbers[count] + numbers[i]);
         }
-        answer.push(num);
     }
-        count++;
-    }
-    return answer.sort((a,b) => (a-b));
+    return temp = [... new Set(answer.sort((a,b) => (a-b)))];
 }
