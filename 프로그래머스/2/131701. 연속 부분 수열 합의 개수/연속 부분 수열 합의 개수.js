@@ -1,17 +1,16 @@
 function solution(elements) {
-  const n = elements.length;
-  const extendedElements = [...elements, ...elements];
-  const sums = new Set();
-
-  for (let length = 1; length <= n; length++) {
-    for (let start = 0; start < n; start++) {
-      let sum = 0;
-      for (let i = 0; i < length; i++) {
-        sum += extendedElements[start + i];
-      }
-      sums.add(sum);
+    const n = elements.length;
+    const newList = [...elements, ...elements];
+    var div = new Set();
+    
+    for (let i = 1; i <= n; i++){
+        for (let j = 0; j < n;j++){
+            var sum = 0;
+            for (let k = 0; k < i; k++){
+             sum += newList[j+k];   
+            }
+            div.add(sum);
+        }
     }
-  }
-
-  return sums.size;
+    return div.size;
 }
