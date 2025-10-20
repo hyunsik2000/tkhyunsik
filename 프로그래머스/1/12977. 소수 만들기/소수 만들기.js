@@ -12,11 +12,9 @@ function solution(nums) {
     var answer = 0;
 
     function isPrime(n) {
-  if (n < 2) return false;
-  if (n === 2) return true;
   if (n % 2 === 0) return false;
   const limit = Math.floor(Math.sqrt(n));
-  for (let d = 3; d <= limit; d += 2) {
+  for (let d = 2; d <= limit; d++) {
     if (n % d === 0) return false;
   }
   return true;
